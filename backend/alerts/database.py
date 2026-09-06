@@ -68,3 +68,35 @@ def save_recommendation(recommendation):
 
     connection.commit()
     connection.close()
+
+def get_latest_recommendation(activity):
+    connection = get_connection()
+
+    row = connection.execute("""
+        SELECT *
+        FROM recommendations
+        WHERE activity = ?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (activity,)).fetchone()
+
+    connection.close()
+    return row
+
+
+def recommendation_changed(old, new):
+    if old is None:
+        return True
+
+    new_window = new.get("best_window")
+
+    new_window_start = new_window.get("start") if new_window else None
+    new_window_end = new_window.get("end") if new_window else None
+
+    return (
+        old["best_time"] != new.get("best_time")
+        or old["score"] != new.get("score")
+        or old["risk"] != new.get("risk")
+        or old["window_start"] != new_window_start
+        or old["window_end"] != new_window_end
+    )
