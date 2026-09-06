@@ -1,10 +1,11 @@
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException, Query
 from datetime import date
 
 from .weather_api import get_weather
 from .weather_processor import process_weather
 from .decision_engine.analyzer import analyze_day
-from .decision_engine.recommendation import generate_recommendation
+from .alerts.alert_manager import generate_and_check_alert
 
 
 app = FastAPI(
@@ -48,12 +49,12 @@ def recommendation(
         )
 
         # 4. Generate final recommendation
-        recommendation_result = generate_recommendation(
+        alert_result = generate_and_check_alert(
             results,
             activity
         )
 
-        return recommendation_result
+        return alert_result
 
     except ValueError as e:
         raise HTTPException(

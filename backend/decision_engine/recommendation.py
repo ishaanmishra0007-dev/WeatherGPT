@@ -1,6 +1,7 @@
 from .optimizer import find_best_hour, find_best_window
 from .explanation import generate_reasons
 from .activities import ACTIVITIES
+from backend.alerts.database import initialize_database, save_recommendation
 
 
 def generate_recommendation(results, activity="spraying"):
@@ -60,5 +61,9 @@ def generate_recommendation(results, activity="spraying"):
     else:
 
         recommendation["best_window"] = None
+
+    if recommendation.get("status") != "NO_DATA":
+        initialize_database()
+        save_recommendation(recommendation)
 
     return recommendation
