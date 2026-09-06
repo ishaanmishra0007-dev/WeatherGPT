@@ -62,7 +62,8 @@ def generate_recommendation(results, activity="spraying"):
 
         recommendation["best_window"] = None
 
-    initialize_database()
-    save_recommendation(recommendation)
+    if recommendation.get("status") != "NO_DATA":
+        initialize_database()
+        save_recommendation(recommendation)
 
     return recommendation
