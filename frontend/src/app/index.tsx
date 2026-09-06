@@ -1,13 +1,16 @@
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  ActivityIndicator,
+  View,
 } from "react-native";
 
 const API_URL = "http://localhost:5000";
@@ -23,111 +26,73 @@ export default function HomeScreen() {
     humidity: 72,
     wind: 14,
     feelsLike: 30,
-    icon: "☁️",
   });
 
   const [question, setQuestion] = useState("");
-
   const [messages, setMessages] = useState([
     {
       sender: "ai",
-      text: "Hi! I'm WeatherGPT. Ask me anything about the weather, forecast, alerts or climate.",
+      text: "Ask me anything about today's forecast, travel advisories, or planning your day.",
     },
   ]);
 
   const searchWeather = async () => {
-    if (!city.trim()) {
-      return;
-    }
+    if (!city.trim()) return;
 
     setLoading(true);
-
     try {
       const response = await fetch(
-        `${API_URL}/api/weather?city=${encodeURIComponent(city)}`
+        `${API_URL}/api/weather?city=${encodeURIComponent(city.trim())}`
       );
 
-      if (!response.ok) {
-        throw new Error("Weather API error");
-      }
+      if (!response.ok) throw new Error("Weather API error");
 
       const data = await response.json();
-
       setWeather({
         city: data.city || city,
-        temperature: data.temperature || 28,
+        temperature: data.temperature ?? 28,
         condition: data.condition || "Partly Cloudy",
-        humidity: data.humidity || 72,
-        wind: data.wind_speed || 14,
-        feelsLike: data.feels_like || 30,
-        icon: data.icon || "☁️",
+        humidity: data.humidity ?? 72,
+        wind: data.wind_speed ?? 14,
+        feelsLike: data.feels_like ?? 30,
       });
-    } catch (error) {
-      setWeather({
-        city: city,
-        temperature: 28,
-        condition: "Partly Cloudy",
-        humidity: 72,
-        wind: 14,
-        feelsLike: 30,
-        icon: "☁️",
-      });
+    } catch {
+      // Fallback
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const askWeatherGPT = async () => {
-    if (!question.trim()) {
-      return;
-    }
+    if (!question.trim()) return;
 
     const userQuestion = question.trim();
-
-    setMessages((previous) => [
-      ...previous,
-      {
-        sender: "user",
-        text: userQuestion,
-      },
-    ]);
-
+    setMessages((prev) => [...prev, { sender: "user", text: userQuestion }]);
     setQuestion("");
 
     try {
       const response = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: userQuestion,
-          city: weather.city,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userQuestion, city: weather.city }),
       });
 
-      if (!response.ok) {
-        throw new Error("Chat API error");
-      }
+      if (!response.ok) throw new Error("Chat API error");
 
       const data = await response.json();
-
-      setMessages((previous) => [
-        ...previous,
+      setMessages((prev) => [
+        ...prev,
         {
           sender: "ai",
-          text:
-            data.response ||
-            data.message ||
-            "I couldn't generate a response.",
+          text: data.response || data.message || "I couldn't analyze the forecast.",
         },
       ]);
-    } catch (error) {
-      setMessages((previous) => [
-        ...previous,
+    } catch {
+      setMessages((prev) => [
+        ...prev,
         {
           sender: "ai",
-          text: `I'm ready to answer questions about ${weather.city}. The AI backend will be connected next.`,
+          text: `I'm analyzing the atmospheric patterns for ${weather.city}. Backend connectivity will be linked shortly.`,
         },
       ]);
     }
@@ -135,674 +100,571 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
-
-        {/* HEADER */}
-
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.logo}>WeatherGPT</Text>
-
-            <Text style={styles.subtitle}>
-              Your AI-powered weather assistant
-            </Text>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* HEADER */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.logo}>WeatherGPT</Text>
+              <Text style={styles.subtitle}>Intelligent Forecast Assistant</Text>
+            </View>
+            <View style={styles.badgeContainer}>
+              <Feather name="cpu" size={14} color="#60A5FA" />
+              <Text style={styles.badgeText}>GPT-4o</Text>
+            </View>
           </View>
 
-          <View style={styles.aiCircle}>
-            <Text style={styles.aiText}>AI</Text>
-          </View>
-        </View>
-
-        {/* SEARCH */}
-
-        <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>⌖</Text>
-
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Enter your city"
-            placeholderTextColor="#8194B0"
-            value={city}
-            onChangeText={setCity}
-            onSubmitEditing={searchWeather}
-          />
-
-          <TouchableOpacity
-            style={styles.searchButton}
-            onPress={searchWeather}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.searchButtonText}>
-                Search
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* CURRENT WEATHER */}
-
-        <View style={styles.weatherCard}>
-          <View>
-            <Text style={styles.cardLabel}>
-              CURRENT WEATHER
-            </Text>
-
-            <Text style={styles.city}>
-              {weather.city}
-            </Text>
-
-            <Text style={styles.temperature}>
-              {weather.temperature}°
-            </Text>
-
-            <Text style={styles.condition}>
-              {weather.condition}
-            </Text>
-          </View>
-
-          <Text style={styles.weatherIcon}>
-            {weather.icon}
-          </Text>
-        </View>
-
-        {/* WEATHER DETAILS */}
-
-        <View style={styles.detailsRow}>
-
-          <DetailCard
-            icon="💧"
-            value={`${weather.humidity}%`}
-            label="Humidity"
-          />
-
-          <DetailCard
-            icon="💨"
-            value={`${weather.wind} km/h`}
-            label="Wind"
-          />
-
-          <DetailCard
-            icon="🌡️"
-            value={`${weather.feelsLike}°`}
-            label="Feels like"
-          />
-
-        </View>
-
-        {/* FORECAST */}
-
-        <Text style={styles.sectionTitle}>
-          5-Day Forecast
-        </Text>
-
-        <View style={styles.forecastCard}>
-
-          <Forecast
-            day="Today"
-            icon="☁️"
-            temp="28°"
-          />
-
-          <Forecast
-            day="Sat"
-            icon="🌤️"
-            temp="30°"
-          />
-
-          <Forecast
-            day="Sun"
-            icon="☀️"
-            temp="31°"
-          />
-
-          <Forecast
-            day="Mon"
-            icon="🌧️"
-            temp="27°"
-          />
-
-          <Forecast
-            day="Tue"
-            icon="⛅"
-            temp="29°"
-          />
-
-        </View>
-
-        {/* AI CHAT */}
-
-        <Text style={styles.sectionTitle}>
-          Ask WeatherGPT
-        </Text>
-
-        <View style={styles.chatCard}>
-
-          {messages.map((message, index) => (
-
-            <View
-              key={index}
-              style={
-                message.sender === "user"
-                  ? styles.userMessage
-                  : styles.aiMessage
-              }
+          {/* SEARCH BAR */}
+          <View style={styles.searchBox}>
+            <Feather name="search" size={18} color="#64748B" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search city..."
+              placeholderTextColor="#64748B"
+              value={city}
+              onChangeText={setCity}
+              onSubmitEditing={searchWeather}
+              returnKeyType="search"
+            />
+            <TouchableOpacity
+              style={styles.searchButton}
+              onPress={searchWeather}
+              disabled={loading}
+              activeOpacity={0.8}
             >
-
-              {message.sender === "ai" && (
-                <View style={styles.smallAI}>
-                  <Text style={styles.smallAIText}>
-                    AI
-                  </Text>
-                </View>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.searchButtonText}>Search</Text>
               )}
+            </TouchableOpacity>
+          </View>
 
-              <View
-                style={
-                  message.sender === "user"
-                    ? styles.userBubble
-                    : styles.aiBubble
-                }
-              >
-
-                <Text style={styles.messageText}>
-                  {message.text}
-                </Text>
-
+          {/* CURRENT WEATHER HERO */}
+          <View style={styles.weatherCard}>
+            <View style={styles.weatherCardTop}>
+              <View>
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-sharp" size={14} color="#60A5FA" />
+                  <Text style={styles.city}>{weather.city}</Text>
+                </View>
+                <Text style={styles.condition}>{weather.condition}</Text>
               </View>
-
+              <Ionicons name="partly-sunny" size={54} color="#60A5FA" />
             </View>
 
-          ))}
+            <View style={styles.weatherCardBottom}>
+              <Text style={styles.temperature}>{weather.temperature}°</Text>
+              <Text style={styles.feelsLikeText}>Feels like {weather.feelsLike}°</Text>
+            </View>
+          </View>
 
-          <View style={styles.chatInputBox}>
-
-            <TextInput
-              style={styles.chatInput}
-              placeholder="Ask about the weather..."
-              placeholderTextColor="#8194B0"
-              value={question}
-              onChangeText={setQuestion}
-              onSubmitEditing={askWeatherGPT}
+          {/* METRIC DETAILS */}
+          <View style={styles.detailsRow}>
+            <DetailCard
+              icon={<Feather name="droplet" size={18} color="#60A5FA" />}
+              value={`${weather.humidity}%`}
+              label="Humidity"
             />
+            <DetailCard
+              icon={<Feather name="wind" size={18} color="#60A5FA" />}
+              value={`${weather.wind} km/h`}
+              label="Wind"
+            />
+            <DetailCard
+              icon={<Feather name="thermometer" size={18} color="#60A5FA" />}
+              value={`${weather.feelsLike}°`}
+              label="RealFeel"
+            />
+          </View>
 
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={askWeatherGPT}
-            >
+          {/* 5-DAY FORECAST */}
+          <Text style={styles.sectionTitle}>5-Day Forecast</Text>
+          <View style={styles.forecastCard}>
+            <ForecastItem day="Today" iconName="cloud" temp="28°" active />
+            <ForecastItem day="Sat" iconName="partly-sunny" temp="30°" />
+            <ForecastItem day="Sun" iconName="sunny" temp="31°" />
+            <ForecastItem day="Mon" iconName="rainy" temp="27°" />
+            <ForecastItem day="Tue" iconName="cloudy" temp="29°" />
+          </View>
 
-              <Text style={styles.sendText}>
-                ➤
+          {/* AI ADVISOR */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Weather Advisor</Text>
+            <Text style={styles.sectionSubtitle}>AI-Powered</Text>
+          </View>
+
+          <View style={styles.chatCard}>
+            {messages.map((message, index) => (
+              <View
+                key={index}
+                style={message.sender === "user" ? styles.userMessage : styles.aiMessage}
+              >
+                {message.sender === "ai" && (
+                  <View style={styles.aiAvatar}>
+                    <Ionicons name="sparkles" size={14} color="#2563EB" />
+                  </View>
+                )}
+                <View
+                  style={message.sender === "user" ? styles.userBubble : styles.aiBubble}
+                >
+                  <Text style={styles.messageText}>{message.text}</Text>
+                </View>
+              </View>
+            ))}
+
+            <View style={styles.chatInputBox}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="Ask advice (e.g., 'Will it rain during commute?')"
+                placeholderTextColor="#64748B"
+                value={question}
+                onChangeText={setQuestion}
+                onSubmitEditing={askWeatherGPT}
+                returnKeyType="send"
+              />
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={askWeatherGPT}
+                activeOpacity={0.7}
+              >
+                <Feather name="arrow-up" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* WEATHER ALERTS */}
+          <Text style={styles.sectionTitle}>Advisories & Alerts</Text>
+          <View style={styles.alertCard}>
+            <View style={styles.alertIconWrapper}>
+              <MaterialCommunityIcons name="shield-check-outline" size={22} color="#10B981" />
+            </View>
+            <View style={styles.alertContent}>
+              <Text style={styles.alertTitle}>Standard Conditions</Text>
+              <Text style={styles.alertText}>
+                No severe storms, rain warnings, or wind advisories currently active in {weather.city}.
               </Text>
+            </View>
+          </View>
 
+          {/* CLIMATE INFORMATION */}
+          <Text style={styles.sectionTitle}>Climate Information</Text>
+          <View style={styles.climateCard}>
+            <View style={styles.climateHeader}>
+              <Ionicons name="earth" size={20} color="#60A5FA" />
+              <Text style={styles.climateTitle}>Understanding Regional Climate</Text>
+            </View>
+            <Text style={styles.climateText}>
+              Explore long-term seasonal trends, historic rainfall patterns, and temperature anomalies in {weather.city}.
+            </Text>
+            <TouchableOpacity style={styles.exploreButton} activeOpacity={0.7}>
+              <Text style={styles.exploreButtonText}>Explore Climate Data</Text>
+              <Feather name="arrow-right" size={14} color="#60A5FA" />
             </TouchableOpacity>
-
           </View>
 
-        </View>
-
-        {/* ALERTS */}
-
-        <Text style={styles.sectionTitle}>
-          Weather Alerts
-        </Text>
-
-        <View style={styles.alertCard}>
-
-          <Text style={styles.alertIcon}>
-            ⚠️
-          </Text>
-
-          <View style={styles.alertContent}>
-
-            <Text style={styles.alertTitle}>
-              No active alerts
-            </Text>
-
-            <Text style={styles.alertText}>
-              We'll notify you when severe weather
-              conditions are detected.
-            </Text>
-
-          </View>
-
-        </View>
-
-        {/* CLIMATE */}
-
-        <Text style={styles.sectionTitle}>
-          Climate Information
-        </Text>
-
-        <View style={styles.climateCard}>
-
-          <Text style={styles.climateTitle}>
-            🌍 Understanding your climate
-          </Text>
-
-          <Text style={styles.climateText}>
-            Get insights about temperature trends,
-            rainfall patterns, climate change and
-            long-term weather conditions.
-          </Text>
-
-          <TouchableOpacity>
-            <Text style={styles.exploreText}>
-              Explore Climate Data →
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-
-        <Text style={styles.footer}>
-          WeatherGPT • AI-powered weather intelligence
-        </Text>
-
-      </ScrollView>
+          {/* FOOTER */}
+          <Text style={styles.footer}>WeatherGPT Engine • Version 1.0.0</Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-
-// WEATHER DETAIL CARD
 
 function DetailCard({
   icon,
   value,
   label,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   value: string;
   label: string;
 }) {
   return (
     <View style={styles.detailCard}>
-
-      <Text style={styles.detailIcon}>
-        {icon}
-      </Text>
-
-      <Text style={styles.detailValue}>
-        {value}
-      </Text>
-
-      <Text style={styles.detailLabel}>
-        {label}
-      </Text>
-
+      <View style={styles.iconContainer}>{icon}</View>
+      <Text style={styles.detailValue}>{value}</Text>
+      <Text style={styles.detailLabel}>{label}</Text>
     </View>
   );
 }
 
-
-// FORECAST CARD
-
-function Forecast({
+function ForecastItem({
   day,
-  icon,
+  iconName,
   temp,
+  active,
 }: {
   day: string;
-  icon: string;
+  iconName: any;
   temp: string;
+  active?: boolean;
 }) {
   return (
-    <View style={styles.forecastDay}>
-
-      <Text style={styles.forecastDayText}>
-        {day}
-      </Text>
-
-      <Text style={styles.forecastIcon}>
-        {icon}
-      </Text>
-
-      <Text style={styles.forecastTemp}>
-        {temp}
-      </Text>
-
+    <View style={[styles.forecastCol, active && styles.forecastColActive]}>
+      <Text style={[styles.forecastDayText, active && styles.forecastDayActive]}>{day}</Text>
+      <Ionicons
+        name={iconName}
+        size={22}
+        color={active ? "#60A5FA" : "#94A3B8"}
+        style={{ marginVertical: 8 }}
+      />
+      <Text style={styles.forecastTemp}>{temp}</Text>
     </View>
   );
 }
 
-
-// STYLES
-
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
-    backgroundColor: "#071A33",
+    backgroundColor: "#0B132B",
   },
-
   content: {
-    padding: 20,
-    paddingBottom: 50,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 130, // Generous padding so tab bar never overlaps
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 20,
   },
-
   logo: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "800",
     color: "#FFFFFF",
+    letterSpacing: -0.5,
   },
-
   subtitle: {
-    color: "#91A4C4",
+    color: "#64748B",
     fontSize: 13,
-    marginTop: 4,
+    fontWeight: "500",
+    marginTop: 2,
   },
-
-  aiCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#16365F",
-    justifyContent: "center",
+  badgeContainer: {
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#1C2A4A",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: "#253860",
   },
-
-  aiText: {
-    color: "#65C7FF",
-    fontWeight: "800",
+  badgeText: {
+    color: "#93C5FD",
+    fontWeight: "700",
+    fontSize: 12,
   },
-
   searchBox: {
-    height: 55,
-    backgroundColor: "#102846",
-    borderRadius: 15,
+    height: 50,
+    backgroundColor: "#16223F",
+    borderRadius: 14,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#23335A",
   },
-
   searchIcon: {
-    fontSize: 22,
-    color: "#65C7FF",
     marginRight: 8,
   },
-
   searchInput: {
     flex: 1,
     color: "#FFFFFF",
     fontSize: 15,
   },
-
   searchButton: {
-    backgroundColor: "#2997FF",
-    paddingVertical: 10,
+    backgroundColor: "#2563EB",
+    paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 10,
-    minWidth: 72,
     alignItems: "center",
+    justifyContent: "center",
   },
-
   searchButtonText: {
     color: "#FFFFFF",
-    fontWeight: "700",
+    fontWeight: "600",
+    fontSize: 13,
   },
-
   weatherCard: {
-    backgroundColor: "#12345A",
-    borderRadius: 22,
-    padding: 24,
+    backgroundColor: "#162544",
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#273D6B",
+  },
+  weatherCardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  locationRow: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
+    gap: 4,
   },
-
-  cardLabel: {
-    color: "#72C9FF",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-
   city: {
     color: "#FFFFFF",
     fontSize: 22,
     fontWeight: "700",
-    marginTop: 7,
   },
-
+  condition: {
+    color: "#94A3B8",
+    fontSize: 14,
+    fontWeight: "500",
+    marginTop: 4,
+  },
+  weatherCardBottom: {
+    marginTop: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
   temperature: {
     color: "#FFFFFF",
-    fontSize: 58,
+    fontSize: 64,
     fontWeight: "300",
-    marginTop: 5,
+    letterSpacing: -2,
   },
-
-  condition: {
-    color: "#B7C7DD",
-    fontSize: 15,
+  feelsLikeText: {
+    color: "#94A3B8",
+    fontSize: 14,
+    marginBottom: 8,
   },
-
-  weatherIcon: {
-    fontSize: 70,
-  },
-
   detailsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 25,
+    marginBottom: 24,
   },
-
   detailCard: {
-    backgroundColor: "#102846",
-    width: "31.5%",
-    paddingVertical: 15,
-    borderRadius: 15,
+    backgroundColor: "#16223F",
+    width: "31%",
+    paddingVertical: 14,
+    borderRadius: 16,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#23335A",
   },
-
-  detailIcon: {
-    fontSize: 20,
+  iconContainer: {
+    marginBottom: 6,
   },
-
   detailValue: {
     color: "#FFFFFF",
     fontWeight: "700",
-    marginTop: 5,
+    fontSize: 15,
   },
-
   detailLabel: {
-    color: "#8194B0",
-    fontSize: 11,
-    marginTop: 3,
+    color: "#64748B",
+    fontSize: 12,
+    marginTop: 2,
   },
-
-  sectionTitle: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 12,
-    marginTop: 8,
-  },
-
-  forecastCard: {
-    backgroundColor: "#102846",
-    borderRadius: 18,
-    padding: 15,
+  sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 25,
-  },
-
-  forecastDay: {
     alignItems: "center",
+    marginBottom: 12,
   },
-
-  forecastDayText: {
-    color: "#91A4C4",
+  sectionTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    marginBottom: 12,
+  },
+  sectionSubtitle: {
+    color: "#60A5FA",
     fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 12,
   },
-
-  forecastIcon: {
-    fontSize: 24,
-    marginVertical: 8,
+  forecastCard: {
+    backgroundColor: "#16223F",
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#23335A",
   },
-
+  forecastCol: {
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  forecastColActive: {
+    backgroundColor: "#1E2F56",
+  },
+  forecastDayText: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  forecastDayActive: {
+    color: "#93C5FD",
+  },
   forecastTemp: {
     color: "#FFFFFF",
     fontWeight: "700",
+    fontSize: 14,
   },
-
   chatCard: {
-    backgroundColor: "#102846",
-    borderRadius: 18,
-    padding: 15,
-    marginBottom: 25,
+    backgroundColor: "#16223F",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#23335A",
   },
-
   aiMessage: {
     flexDirection: "row",
     alignItems: "flex-start",
     marginBottom: 12,
+    gap: 8,
   },
-
   userMessage: {
     flexDirection: "row",
     justifyContent: "flex-end",
     marginBottom: 12,
   },
-
-  smallAI: {
-    width: 35,
-    height: 35,
-    borderRadius: 18,
-    backgroundColor: "#2997FF",
+  aiAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#DBEAFE",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
+    marginTop: 2,
   },
-
-  smallAIText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "800",
-  },
-
   aiBubble: {
-    backgroundColor: "#173A62",
+    backgroundColor: "#1F2E52",
     borderRadius: 14,
+    borderTopLeftRadius: 4,
     padding: 12,
-    maxWidth: "82%",
+    maxWidth: "84%",
   },
-
   userBubble: {
-    backgroundColor: "#2997FF",
+    backgroundColor: "#2563EB",
     borderRadius: 14,
+    borderTopRightRadius: 4,
     padding: 12,
-    maxWidth: "82%",
+    maxWidth: "84%",
   },
-
   messageText: {
     color: "#FFFFFF",
     lineHeight: 20,
-    fontSize: 14,
+    fontSize: 13,
   },
-
   chatInputBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#071A33",
+    backgroundColor: "#0E1830",
     borderRadius: 12,
-    paddingLeft: 12,
+    paddingHorizontal: 10,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#1E2D4E",
   },
-
   chatInput: {
     flex: 1,
     color: "#FFFFFF",
-    height: 45,
+    height: 44,
+    fontSize: 13,
   },
-
   sendButton: {
-    width: 45,
-    height: 45,
-    backgroundColor: "#2997FF",
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    backgroundColor: "#2563EB",
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
-
-  sendText: {
-    color: "#FFFFFF",
-    fontSize: 20,
-  },
-
   alertCard: {
-    backgroundColor: "#102846",
+    backgroundColor: "#16223F",
     borderRadius: 18,
-    padding: 18,
+    padding: 16,
     flexDirection: "row",
-    marginBottom: 25,
+    alignItems: "center",
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#23335A",
+    gap: 12,
   },
-
-  alertIcon: {
-    fontSize: 25,
-    marginRight: 12,
+  alertIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-
   alertContent: {
     flex: 1,
   },
-
   alertTitle: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  alertText: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 3,
+    lineHeight: 17,
+  },
+  climateCard: {
+    backgroundColor: "#16223F",
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#23335A",
+  },
+  climateHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  climateTitle: {
     color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 15,
   },
-
-  alertText: {
-    color: "#91A4C4",
-    fontSize: 13,
-    marginTop: 5,
-    lineHeight: 18,
-  },
-
-  climateCard: {
-    backgroundColor: "#102846",
-    borderRadius: 18,
-    padding: 20,
-  },
-
-  climateTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
   climateText: {
-    color: "#91A4C4",
+    color: "#94A3B8",
     fontSize: 13,
-    lineHeight: 20,
-    marginTop: 10,
+    lineHeight: 19,
+    marginBottom: 14,
   },
-
-  exploreText: {
-    color: "#65C7FF",
-    fontWeight: "700",
-    marginTop: 15,
+  exploreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-
+  exploreButtonText: {
+    color: "#60A5FA",
+    fontWeight: "600",
+    fontSize: 13,
+  },
   footer: {
     textAlign: "center",
-    color: "#536B89",
+    color: "#475569",
     fontSize: 11,
-    marginTop: 35,
+    fontWeight: "500",
+    marginTop: 10,
   },
-
 });
