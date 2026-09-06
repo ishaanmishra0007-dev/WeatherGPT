@@ -15,7 +15,16 @@ def generate_and_check_alert(results, activity="spraying"):
         new_recommendation
     )
 
+    alert = None
+
+    if changed and old_recommendation is not None:
+        alert = {
+            "title": "WeatherGPT Alert",
+            "message": "Your recommended window changed because the forecast changed."
+        }
+
     return {
         "recommendation": new_recommendation,
-        "changed": changed
+        "changed": changed,
+        "alert": alert
     }
