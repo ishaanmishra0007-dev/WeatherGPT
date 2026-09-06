@@ -1,5 +1,6 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import * as Location from "expo-location";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,8 +15,102 @@ import {
 } from "react-native";
 
 const API_URL = "http://localhost:5000";
-
+const RECOMMENDATION_API_URL = "http://127.0.0.1:8000";
 export default function HomeScreen() {
+  const [location, setLocation] =
+  useState<Location.LocationObject | null>(null);
+  const [selectedActivity, setSelectedActivity] =
+  useState("spraying");
+  const [recommendation, setRecommendation] =
+  useState<any>(null);
+
+  const [recommendationLoading, setRecommendationLoading] =
+  useState(false);
+  const getUserLocation = async () => {
+  try {
+    const { status } =
+      await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      console.log("Location permission denied");
+      return;
+    }
+
+    const currentLocation =
+      await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+    setLocation(currentLocation);
+
+    console.log(
+      "Latitude:",
+      currentLocation.coords.latitude
+    );
+
+    console.log(
+      "Longitude:",
+      currentLocation.coords.longitude
+    );
+  } catch (error) {
+    console.error("Location error:", error);
+  }
+};
+useEffect(() => {
+  getUserLocation();
+}, []);
+const getTomorrowDate = () => {
+  const tomorrow = new Date();
+
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  return `${tomorrow.getFullYear()}-${String(
+    tomorrow.getMonth() + 1
+  ).padStart(2, "0")}-${String(
+    tomorrow.getDate()
+  ).padStart(2, "0")}`;
+};
+const getRecommendation = async () => {
+  if (!location) {
+    console.log("Location not available yet");
+    return;
+  }
+
+  try {
+    setRecommendationLoading(true);
+
+    const latitude = location.coords.latitude;
+    const longitude = location.coords.longitude;
+    const targetDate = getTomorrowDate();
+
+    const url =
+      `${RECOMMENDATION_API_URL}/recommendation` +
+      `?latitude=${encodeURIComponent(latitude)}` +
+      `&longitude=${encodeURIComponent(longitude)}` +
+      `&activity=${encodeURIComponent(selectedActivity)}` +
+      `&target_date=${encodeURIComponent(targetDate)}`;
+
+    console.log("Recommendation URL:", url);
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(
+        `Recommendation API error: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    console.log("Recommendation:", data);
+
+    setRecommendation(data);
+  } catch (error) {
+    console.error("Recommendation error:", error);
+  } finally {
+    setRecommendationLoading(false);
+  }
+};
   const [city, setCity] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -269,6 +364,140 @@ export default function HomeScreen() {
               <Feather name="arrow-right" size={14} color="#60A5FA" />
             </TouchableOpacity>
           </View>
+          <View
+  style={{
+    marginTop: 24,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: "#ffffff",
+  }}
+>
+  <Text
+    style={{
+      fontSize: 22,
+      fontWeight: "700",
+      marginBottom: 16,
+    }}
+  >
+    What are you planning?
+  </Text>
+
+  <View
+    style={{
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    }}
+  >
+    <TouchableOpacity
+      onPress={() => setSelectedActivity("spraying")}
+      style={{
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor:
+          selectedActivity === "spraying"
+            ? "#2563eb"
+            : "#e5e7eb",
+      }}
+    >
+      <Text
+        style={{
+          color:
+            selectedActivity === "spraying"
+              ? "#ffffff"
+              : "#111827",
+          fontWeight: "600",
+        }}
+      >
+        🌱 Crop Spraying
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      onPress={() => setSelectedActivity("running")}
+      style={{
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor:
+          selectedActivity === "running"
+            ? "#2563eb"
+            : "#e5e7eb",
+      }}
+    >
+      <Text
+        style={{
+          color:
+            selectedActivity === "running"
+              ? "#ffffff"
+              : "#111827",
+          fontWeight: "600",
+        }}
+      >
+        🏃 Running
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      onPress={() =>
+        setSelectedActivity("outdoor_event")
+      }
+      style={{
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor:
+          selectedActivity === "outdoor_event"
+            ? "#2563eb"
+            : "#e5e7eb",
+      }}
+    >
+      <Text
+        style={{
+          color:
+            selectedActivity === "outdoor_event"
+              ? "#ffffff"
+              : "#111827",
+          fontWeight: "600",
+        }}
+      >
+        🎪 Outdoor Event
+      </Text>
+    </TouchableOpacity>
+  </View>
+
+  <TouchableOpacity
+    onPress={getRecommendation}
+    disabled={
+      recommendationLoading || !location
+    }
+    style={{
+      marginTop: 20,
+      paddingVertical: 15,
+      borderRadius: 14,
+      backgroundColor:
+        recommendationLoading || !location
+          ? "#9ca3af"
+          : "#111827",
+      alignItems: "center",
+    }}
+  >
+    <Text
+      style={{
+        color: "#ffffff",
+        fontSize: 16,
+        fontWeight: "700",
+      }}
+    >
+      {recommendationLoading
+        ? "Finding Best Time..."
+        : !location
+        ? "Getting Location..."
+        : "Find Best Time"}
+    </Text>
+  </TouchableOpacity>
+</View>
 
           {/* FOOTER */}
           <Text style={styles.footer}>WeatherGPT Engine • Version 1.0.0</Text>
@@ -668,3 +897,4 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 });
+
