@@ -50,13 +50,13 @@ ACTIVITY_KEYWORDS = {
         "road trip"
     ],
 
-    "trekking": [
-        "trek",
-        "trekking",
-        "hike",
-        "hiking",
-        "go hiking",
-        "go trekking"
+    "travel": [
+        "travel",
+        "travelling",
+        "visiting",
+        "trip",
+        "go travel to ",
+        "journey"
     ]
 }
 
